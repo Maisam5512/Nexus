@@ -1,41 +1,127 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Users, Bell, Calendar, TrendingUp, AlertCircle, PlusCircle } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
-import { Card, CardBody, CardHeader } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { CollaborationRequestCard } from '../../components/collaboration/CollaborationRequestCard';
-import { InvestorCard } from '../../components/investor/InvestorCard';
-import { useAuth } from '../../context/AuthContext';
-import { CollaborationRequest } from '../../types';
-import { getRequestsForEntrepreneur } from '../../data/collaborationRequests';
-import { investors } from '../../data/users';
+
+"use client"
+
+import type React from "react"
+import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
+import { Users, Bell, Calendar, TrendingUp, AlertCircle, PlusCircle } from "lucide-react"
+import { Button } from "../../components/ui/Button"
+import { Card, CardBody, CardHeader } from "../../components/ui/Card"
+import { Badge } from "../../components/ui/Badge"
+import { CollaborationRequestCard } from "../../components/collaboration/CollaborationRequestCard"
+import { InvestorCard } from "../../components/investor/InvestorCard"
+import { useAuth } from "../../context/AuthContext"
+import type { CollaborationRequest, Investor } from "../../types"
+import { userService } from "../../services/userService"
+import { collaborationService } from "../../services/collaborationService"
+
+// Helper function to normalize user data from backend
+// const normalizeUserData = (userData: any) => {
+//   if (!userData) return null;
+  
+//   // Handle Mongoose _id field by converting it to id
+//   if (userData._id && !userData.id) {
+//     return {
+//       ...userData,
+//       id: userData._id.toString()
+//     };
+//   }
+//   return userData;
+// };
 
 export const EntrepreneurDashboard: React.FC = () => {
-  const { user } = useAuth();
-  const [collaborationRequests, setCollaborationRequests] = useState<CollaborationRequest[]>([]);
-  const [recommendedInvestors, setRecommendedInvestors] = useState(investors.slice(0, 3));
-  
+  const { user, isLoading } = useAuth()
+  const [collaborationRequestsData, setCollaborationRequestsData] = useState<CollaborationRequest[]>([])
+  const [recommendedInvestors, setRecommendedInvestors] = useState<Investor[]>([])
+  const [loadingRequests, setLoadingRequests] = useState(true)
+  const [loadingInvestors, setLoadingInvestors] = useState(true)
+
   useEffect(() => {
-    if (user) {
-      // Load collaboration requests
-      const requests = getRequestsForEntrepreneur(user.id);
-      setCollaborationRequests(requests);
+    if (user && !isLoading) {
+      loadCollaborationRequests()
+      loadRecommendedInvestors()
     }
-  }, [user]);
-  
-  const handleRequestStatusUpdate = (requestId: string, status: 'accepted' | 'rejected') => {
-    setCollaborationRequests(prevRequests => 
-      prevRequests.map(req => 
-        req.id === requestId ? { ...req, status } : req
-      )
-    );
-  };
-  
-  if (!user) return null;
-  
-  const pendingRequests = collaborationRequests.filter(req => req.status === 'pending');
-  
+  }, [user, isLoading])
+
+  const loadCollaborationRequests = async () => {
+    if (!user?.id) {
+      console.warn("[v0] No user ID available for loading collaboration requests")
+      setCollaborationRequestsData([])
+      setLoadingRequests(false)
+      return
+    }
+
+    try {
+      setLoadingRequests(true)
+      const response = await collaborationService.getCollaborationRequests()
+      
+      if (response.success) {
+        // Filter requests for current user (entrepreneur)
+        const userRequests = response.data.filter((req: CollaborationRequest) => req.entrepreneurId === user.id)
+        setCollaborationRequestsData(userRequests)
+      } else {
+        console.error("Failed to load collaboration requests:", response.error)
+        setCollaborationRequestsData([])
+      }
+    } catch (error) {
+      console.error("Failed to load collaboration requests:", error)
+      setCollaborationRequestsData([])
+    } finally {
+      setLoadingRequests(false)
+    }
+  }
+
+  const loadRecommendedInvestors = async () => {
+    try {
+      setLoadingInvestors(true)
+      const response = await userService.getUsers({ role: "investor", limit: 3 })
+      
+      if (response.success) {
+        setRecommendedInvestors(response.data as unknown as Investor[])
+      } else {
+        console.error("Failed to load recommended investors:", response.error)
+        setRecommendedInvestors([])
+      }
+    } catch (error) {
+      console.error("Failed to load recommended investors:", error)
+      setRecommendedInvestors([])
+    } finally {
+      setLoadingInvestors(false)
+    }
+  }
+
+  const handleRequestStatusUpdate = async (requestId: string, status: "accepted" | "rejected") => {
+    if (!requestId) {
+      console.warn("[v0] No request ID provided for status update")
+      return
+    }
+
+    try {
+      const response = await collaborationService.updateCollaborationRequest(requestId, { status })
+      if (response.success) {
+        setCollaborationRequestsData((prevRequests) =>
+          prevRequests.map((req) => (req.id === requestId ? { ...req, status } : req)),
+        )
+      } else {
+        console.error("Failed to update request status:", response.error)
+      }
+    } catch (error) {
+      console.error("Failed to update request status:", error)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  if (!user) return null
+
+  const pendingRequests = collaborationRequestsData.filter((req) => req.status === "pending")
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
@@ -43,16 +129,12 @@ export const EntrepreneurDashboard: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">Welcome, {user.name}</h1>
           <p className="text-gray-600">Here's what's happening with your startup today</p>
         </div>
-        
+
         <Link to="/investors">
-          <Button
-            leftIcon={<PlusCircle size={18} />}
-          >
-            Find Investors
-          </Button>
+          <Button leftIcon={<PlusCircle size={18} />}>Find Investors</Button>
         </Link>
       </div>
-      
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-primary-50 border border-primary-100">
@@ -68,7 +150,7 @@ export const EntrepreneurDashboard: React.FC = () => {
             </div>
           </CardBody>
         </Card>
-        
+
         <Card className="bg-secondary-50 border border-secondary-100">
           <CardBody>
             <div className="flex items-center">
@@ -78,13 +160,13 @@ export const EntrepreneurDashboard: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-secondary-700">Total Connections</p>
                 <h3 className="text-xl font-semibold text-secondary-900">
-                  {collaborationRequests.filter(req => req.status === 'accepted').length}
+                  {collaborationRequestsData.filter((req) => req.status === "accepted").length}
                 </h3>
               </div>
             </div>
           </CardBody>
         </Card>
-        
+
         <Card className="bg-accent-50 border border-accent-100">
           <CardBody>
             <div className="flex items-center">
@@ -98,7 +180,7 @@ export const EntrepreneurDashboard: React.FC = () => {
             </div>
           </CardBody>
         </Card>
-        
+
         <Card className="bg-success-50 border border-success-100">
           <CardBody>
             <div className="flex items-center">
@@ -113,7 +195,7 @@ export const EntrepreneurDashboard: React.FC = () => {
           </CardBody>
         </Card>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Collaboration requests */}
         <div className="lg:col-span-2 space-y-4">
@@ -122,11 +204,15 @@ export const EntrepreneurDashboard: React.FC = () => {
               <h2 className="text-lg font-medium text-gray-900">Collaboration Requests</h2>
               <Badge variant="primary">{pendingRequests.length} pending</Badge>
             </CardHeader>
-            
+
             <CardBody>
-              {collaborationRequests.length > 0 ? (
+              {loadingRequests ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-600"></div>
+                </div>
+              ) : collaborationRequestsData.length > 0 ? (
                 <div className="space-y-4">
-                  {collaborationRequests.map(request => (
+                  {collaborationRequestsData.map((request) => (
                     <CollaborationRequestCard
                       key={request.id}
                       request={request}
@@ -140,13 +226,15 @@ export const EntrepreneurDashboard: React.FC = () => {
                     <AlertCircle size={24} className="text-gray-500" />
                   </div>
                   <p className="text-gray-600">No collaboration requests yet</p>
-                  <p className="text-sm text-gray-500 mt-1">When investors are interested in your startup, their requests will appear here</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    When investors are interested in your startup, their requests will appear here
+                  </p>
                 </div>
               )}
             </CardBody>
           </Card>
         </div>
-        
+
         {/* Recommended investors */}
         <div className="space-y-4">
           <Card>
@@ -156,19 +244,34 @@ export const EntrepreneurDashboard: React.FC = () => {
                 View all
               </Link>
             </CardHeader>
-            
+
             <CardBody className="space-y-4">
-              {recommendedInvestors.map(investor => (
-                <InvestorCard
-                  key={investor.id}
-                  investor={investor}
-                  showActions={false}
-                />
-              ))}
+              {loadingInvestors ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary-600"></div>
+                </div>
+              ) : recommendedInvestors.length > 0 ? (
+                recommendedInvestors.map((investor) => (
+                  <InvestorCard key={investor.id} investor={investor} showActions={false} />
+                ))
+              ) : (
+                <p className="text-gray-600 text-center py-4">No investors available</p>
+              )}
             </CardBody>
           </Card>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
+
+
+
+
+
+
+
+
+
+
+

@@ -45,30 +45,30 @@ export const EntrepreneurCard: React.FC<EntrepreneurCardProps> = ({
           
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">{entrepreneur.name}</h3>
-            <p className="text-sm text-gray-500 mb-2">{entrepreneur.startupName}</p>
+            <p className="text-sm text-gray-500 mb-2">{entrepreneur.startupName || 'Startup'}</p>
             
             <div className="flex flex-wrap gap-2 mb-3">
-              <Badge variant="primary" size="sm">{entrepreneur.industry}</Badge>
-              <Badge variant="gray" size="sm">{entrepreneur.location}</Badge>
-              <Badge variant="accent" size="sm">Founded {entrepreneur.foundedYear}</Badge>
+              {entrepreneur.industry && <Badge variant="primary" size="sm">{entrepreneur.industry}</Badge>}
+              {entrepreneur.location && <Badge variant="gray" size="sm">{entrepreneur.location}</Badge>}
+              {entrepreneur.foundedYear && <Badge variant="accent" size="sm">Founded {entrepreneur.foundedYear}</Badge>}
             </div>
           </div>
         </div>
         
         <div className="mt-3">
           <h4 className="text-sm font-medium text-gray-900 mb-1">Pitch Summary</h4>
-          <p className="text-sm text-gray-600 line-clamp-3">{entrepreneur.pitchSummary}</p>
+          <p className="text-sm text-gray-600 line-clamp-3">{entrepreneur.pitchSummary || 'No pitch summary available'}</p>
         </div>
         
         <div className="mt-3 flex justify-between items-center">
           <div>
             <span className="text-xs text-gray-500">Funding Need</span>
-            <p className="text-sm font-medium text-gray-900">{entrepreneur.fundingNeeded}</p>
+            <p className="text-sm font-medium text-gray-900">{entrepreneur.fundingNeeded || 'N/A'}</p>
           </div>
           
           <div>
             <span className="text-xs text-gray-500">Team Size</span>
-            <p className="text-sm font-medium text-gray-900">{entrepreneur.teamSize} people</p>
+            <p className="text-sm font-medium text-gray-900">{entrepreneur.teamSize || 1} people</p>
           </div>
         </div>
       </CardBody>
