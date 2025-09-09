@@ -17,6 +17,7 @@ const profileRoutes = require("./routes/profiles")
 const messageRoutes = require("./routes/messages")
 const collaborationRoutes = require("./routes/collaborations")
 const meetingRoutes = require("./routes/meetings");
+const documentsRoutes = require('./routes/documents');
 
 // Import middleware
 const { authenticateToken } = require("./middleware/auth")
@@ -237,6 +238,7 @@ app.use("/api/profiles", authenticateToken, profileRoutes)
 app.use("/api/messages", authenticateToken, messageRoutes)
 app.use("/api/collaborations", authenticateToken, collaborationRoutes)
 app.use("/api/meetings", authenticateToken, meetingRoutes);
+app.use('/api/documents', authenticateToken, documentsRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
