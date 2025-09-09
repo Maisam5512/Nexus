@@ -79,6 +79,80 @@ router.post(
 // @route   GET /api/collaborations/requests
 // @desc    Get collaboration requests for current user
 // @access  Private
+// router.get(
+//   "/requests",
+//   [
+//     query("status").optional().isIn(["pending", "accepted", "rejected", "withdrawn", "expired"]),
+//     query("type").optional().isIn(["sent", "received"]),
+//     query("page").optional().isInt({ min: 1 }),
+//     query("limit").optional().isInt({ min: 1, max: 50 }),
+//   ],
+//   async (req, res) => {
+//     try {
+//       const userId = req.user.id
+//       const userRole = req.user.role
+//       const { status, type, page = 1, limit = 10 } = req.query
+//       const skip = (page - 1) * limit
+
+//       // Build query
+//       const query = {}
+
+//       if (status) {
+//         query.status = status
+//       }
+
+//       // Determine request direction
+//       if (type === "sent") {
+//         if (userRole === "investor") {
+//           query.investorId = userId
+//         } else {
+//           query.entrepreneurId = userId
+//         }
+//       } else if (type === "received") {
+//         if (userRole === "investor") {
+//           query.entrepreneurId = userId
+//         } else {
+//           query.investorId = userId
+//         }
+//       } else {
+//         // Both sent and received
+//         query.$or = [{ investorId: userId }, { entrepreneurId: userId }]
+//       }
+
+//       const requests = await CollaborationRequest.find(query)
+//         .populate("investorId", "name email avatarUrl role")
+//         .populate("entrepreneurId", "name email avatarUrl role")
+//         .sort({ createdAt: -1 })
+//         .skip(skip)
+//         .limit(Number.parseInt(limit))
+
+//       const total = await CollaborationRequest.countDocuments(query)
+
+//       res.json({
+//         requests,
+//         pagination: {
+//           currentPage: Number.parseInt(page),
+//           totalPages: Math.ceil(total / limit),
+//           totalRequests: total,
+//           hasNext: page < Math.ceil(total / limit),
+//           hasPrev: page > 1,
+//         },
+//       })
+//     } catch (error) {
+//       console.error("Get collaboration requests error:", error)
+//       res.status(500).json({
+//         message: "Failed to fetch collaboration requests",
+//         code: "FETCH_REQUESTS_FAILED",
+//       })
+//     }
+//   },
+// )
+
+
+
+// @route   GET /api/collaborations/requests
+// @desc    Get collaboration requests for current user
+// @access  Private
 router.get(
   "/requests",
   [
@@ -128,8 +202,10 @@ router.get(
 
       const total = await CollaborationRequest.countDocuments(query)
 
+      // Ensure consistent response format
       res.json({
-        requests,
+        requests, // This is the key the frontend expects
+        data: requests, // Alternative key for compatibility
         pagination: {
           currentPage: Number.parseInt(page),
           totalPages: Math.ceil(total / limit),

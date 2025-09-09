@@ -1,4 +1,3 @@
-
 "use client"
 
 import type React from "react"
@@ -15,33 +14,20 @@ import type { CollaborationRequest, Investor } from "../../types"
 import { userService } from "../../services/userService"
 import { collaborationService } from "../../services/collaborationService"
 
-// Helper function to normalize user data from backend
-// const normalizeUserData = (userData: any) => {
-//   if (!userData) return null;
-  
-//   // Handle Mongoose _id field by converting it to id
-//   if (userData._id && !userData.id) {
-//     return {
-//       ...userData,
-//       id: userData._id.toString()
-//     };
-//   }
-//   return userData;
-// };
-
 export const EntrepreneurDashboard: React.FC = () => {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [collaborationRequestsData, setCollaborationRequestsData] = useState<CollaborationRequest[]>([])
   const [recommendedInvestors, setRecommendedInvestors] = useState<Investor[]>([])
   const [loadingRequests, setLoadingRequests] = useState(true)
   const [loadingInvestors, setLoadingInvestors] = useState(true)
 
   useEffect(() => {
-    if (user && !isLoading) {
+    // Only load data when auth is not loading and user object is available with ID
+    if (!authLoading && user?.id) {
       loadCollaborationRequests()
       loadRecommendedInvestors()
     }
-  }, [user, isLoading])
+  }, [authLoading, user])
 
   const loadCollaborationRequests = async () => {
     if (!user?.id) {
@@ -110,7 +96,7 @@ export const EntrepreneurDashboard: React.FC = () => {
     }
   }
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
@@ -264,10 +250,6 @@ export const EntrepreneurDashboard: React.FC = () => {
     </div>
   )
 }
-
-
-
-
 
 
 

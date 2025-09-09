@@ -84,6 +84,30 @@ export interface CollaborationRequest {
   message: string
   status: "pending" | "accepted" | "rejected"
   createdAt: string
+  requestType: "investment" | "mentorship" | "partnership" | "advisory"
+  proposedAmount?: string
+  proposedTerms?: string
+  respondedAt?: string
+  responseMessage?: string
+  
+}
+
+export interface MeetingDetails {
+  scheduledFor: string
+  duration: number
+  location?: string
+  meetingLink?: string
+  agenda?: string
+  status: "pending" | "confirmed" | "cancelled" | "completed"
+  createdBy: string
+  participants: MeetingParticipant[]
+  calendarEventId?: string
+}
+
+export interface MeetingParticipant {
+  userId: string
+  response: "pending" | "accepted" | "rejected" | "tentative"
+  responseAt?: string
 }
 
 export interface Document {

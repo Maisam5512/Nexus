@@ -192,6 +192,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  const getUserId = (): string | null => {
+  return user?.id || null
+}
+
   const value = {
     user,
     login,
@@ -202,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfile,
     isAuthenticated: !!user,
     isLoading,
+    getUserId
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

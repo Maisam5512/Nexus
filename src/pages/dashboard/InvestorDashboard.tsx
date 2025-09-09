@@ -24,7 +24,7 @@ export const InvestorDashboard: React.FC = () => {
   const [loadingRequests, setLoadingRequests] = useState(true)
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadEntrepreneurs()
       loadCollaborationRequests()
     }
@@ -247,6 +247,7 @@ export const InvestorDashboard: React.FC = () => {
     </div>
   )
 }
+
 
 
 

@@ -7,6 +7,7 @@ const { createServer } = require("http")
 const { Server } = require("socket.io")
 const crypto = require("crypto")
 const { encryptMessage, decryptMessage } = require('./utils/encryption');
+
 require("dotenv").config()
 
 // Import routes
@@ -15,6 +16,7 @@ const userRoutes = require("./routes/users")
 const profileRoutes = require("./routes/profiles")
 const messageRoutes = require("./routes/messages")
 const collaborationRoutes = require("./routes/collaborations")
+const meetingRoutes = require("./routes/meetings");
 
 // Import middleware
 const { authenticateToken } = require("./middleware/auth")
@@ -234,6 +236,7 @@ app.use("/api/users", authenticateToken, userRoutes)
 app.use("/api/profiles", authenticateToken, profileRoutes)
 app.use("/api/messages", authenticateToken, messageRoutes)
 app.use("/api/collaborations", authenticateToken, collaborationRoutes)
+app.use("/api/meetings", authenticateToken, meetingRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

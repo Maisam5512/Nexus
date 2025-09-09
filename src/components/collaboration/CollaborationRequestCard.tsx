@@ -1,9 +1,178 @@
+// "use client"
+
+// import type React from "react"
+// import { useState } from "react"
+// import { useNavigate } from "react-router-dom"
+// import { Check, X, MessageCircle } from "lucide-react"
+// import type { CollaborationRequest } from "../../types"
+// import { Card, CardBody, CardFooter } from "../ui/Card"
+// import { Avatar } from "../ui/Avatar"
+// import { Badge } from "../ui/Badge"
+// import { Button } from "../ui/Button"
+// import { findUserById } from "../../data/users"
+// import { collaborationService } from "../../services/collaborationService"
+// import { formatDistanceToNow } from "date-fns"
+
+// interface CollaborationRequestCardProps {
+//   request: CollaborationRequest
+//   onStatusUpdate?: (requestId: string, status: "accepted" | "rejected") => void
+// }
+
+// export const CollaborationRequestCard: React.FC<CollaborationRequestCardProps> = ({ request, onStatusUpdate }) => {
+//   const navigate = useNavigate()
+//   const investor = findUserById(request.investorId)
+//   const [isAcceptLoading, setIsAcceptLoading] = useState(false)
+//   const [isRejectLoading, setIsRejectLoading] = useState(false)
+
+//   if (!investor) return null
+
+//   const handleAccept = async () => {
+//     setIsAcceptLoading(true)
+//     try {
+//       await collaborationService.acceptRequest(request.id)
+//       if (onStatusUpdate) {
+//         onStatusUpdate(request.id, "accepted")
+//       }
+//     } catch (error) {
+//       console.error("Failed to accept request:", error)
+//       alert("Failed to accept request. Please try again.")
+//     } finally {
+//       setIsAcceptLoading(false)
+//     }
+//   }
+
+//   const handleReject = async () => {
+//     setIsRejectLoading(true)
+//     try {
+//       await collaborationService.rejectRequest(request.id)
+//       if (onStatusUpdate) {
+//         onStatusUpdate(request.id, "rejected")
+//       }
+//     } catch (error) {
+//       console.error("Failed to reject request:", error)
+//       alert("Failed to reject request. Please try again.")
+//     } finally {
+//       setIsRejectLoading(false)
+//     }
+//   }
+
+//   const handleMessage = () => {
+//     navigate(`/chat/${investor.id}`)
+//   }
+
+//   const handleViewProfile = () => {
+//     navigate(`/profile/investor/${investor.id}`)
+//   }
+
+//   const getStatusBadge = () => {
+//     switch (request.status) {
+//       case "pending":
+//         return <Badge variant="warning">Pending</Badge>
+//       case "accepted":
+//         return <Badge variant="success">Accepted</Badge>
+//       case "rejected":
+//         return <Badge variant="error">Declined</Badge>
+//       default:
+//         return null
+//     }
+//   }
+
+//   return (
+//     <Card className="transition-all duration-300">
+//       <CardBody className="flex flex-col">
+//         <div className="flex justify-between items-start">
+//           <div className="flex items-start">
+//             <Avatar
+//               src={investor.avatarUrl}
+//               alt={investor.name}
+//               size="md"
+//               status={investor.isOnline ? "online" : "offline"}
+//               className="mr-3"
+//             />
+
+//             <div>
+//               <h3 className="text-md font-semibold text-gray-900">{investor.name}</h3>
+//               <p className="text-sm text-gray-500">
+//                 {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+//               </p>
+//             </div>
+//           </div>
+
+//           {getStatusBadge()}
+//         </div>
+
+//         <div className="mt-4">
+//           <p className="text-sm text-gray-600">{request.message}</p>
+//         </div>
+//       </CardBody>
+
+//       <CardFooter className="border-t border-gray-100 bg-gray-50">
+//         {request.status === "pending" ? (
+//           <div className="flex justify-between w-full">
+//             <div className="space-x-2">
+//               <Button
+//                 variant="outline"
+//                 size="sm"
+//                 leftIcon={<X size={16} />}
+//                 onClick={handleReject}
+//                 disabled={isRejectLoading || isAcceptLoading}
+//               >
+//                 {isRejectLoading ? "Declining..." : "Decline"}
+//               </Button>
+//               <Button
+//                 variant="success"
+//                 size="sm"
+//                 leftIcon={<Check size={16} />}
+//                 onClick={handleAccept}
+//                 disabled={isAcceptLoading || isRejectLoading}
+//               >
+//                 {isAcceptLoading ? "Accepting..." : "Accept"}
+//               </Button>
+//             </div>
+
+//             <Button variant="primary" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
+//               Message
+//             </Button>
+//           </div>
+//         ) : (
+//           <div className="flex justify-between w-full">
+//             <Button variant="outline" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
+//               Message
+//             </Button>
+
+//             <Button variant="primary" size="sm" onClick={handleViewProfile}>
+//               View Profile
+//             </Button>
+//           </div>
+//         )}
+//       </CardFooter>
+//     </Card>
+//   )
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 "use client"
 
 import type React from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Check, X, MessageCircle } from "lucide-react"
+import { Check, X, MessageCircle, Calendar, Clock, MapPin, Video } from "lucide-react"
 import type { CollaborationRequest } from "../../types"
 import { Card, CardBody, CardFooter } from "../ui/Card"
 import { Avatar } from "../ui/Avatar"
@@ -11,18 +180,28 @@ import { Badge } from "../ui/Badge"
 import { Button } from "../ui/Button"
 import { findUserById } from "../../data/users"
 import { collaborationService } from "../../services/collaborationService"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, format } from "date-fns"
+import { MeetingSchedulerModal } from "../meeting/MeetingSchedulerModal"
+import  {MeetingResponseModal } from "../meeting/MeetingResponseModal"
 
 interface CollaborationRequestCardProps {
   request: CollaborationRequest
   onStatusUpdate?: (requestId: string, status: "accepted" | "rejected") => void
+  onMeetingScheduled?: (requestId: string, meetingDetails: any) => void
 }
 
-export const CollaborationRequestCard: React.FC<CollaborationRequestCardProps> = ({ request, onStatusUpdate }) => {
+export const CollaborationRequestCard: React.FC<CollaborationRequestCardProps> = ({ 
+  request, 
+  onStatusUpdate,
+  onMeetingScheduled 
+}) => {
   const navigate = useNavigate()
   const investor = findUserById(request.investorId)
   const [isAcceptLoading, setIsAcceptLoading] = useState(false)
   const [isRejectLoading, setIsRejectLoading] = useState(false)
+  const [isSchedulerOpen, setIsSchedulerOpen] = useState(false)
+  const [isResponseOpen, setIsResponseOpen] = useState(false)
+  const [meetingResponse, setMeetingResponse] = useState<"accepted" | "rejected" | "tentative">("accepted")
 
   if (!investor) return null
 
@@ -64,6 +243,33 @@ export const CollaborationRequestCard: React.FC<CollaborationRequestCardProps> =
     navigate(`/profile/investor/${investor.id}`)
   }
 
+  const handleScheduleMeeting = () => {
+    setIsSchedulerOpen(true)
+  }
+
+  const handleRespondToMeeting = (response: "accepted" | "rejected" | "tentative") => {
+    setMeetingResponse(response)
+    setIsResponseOpen(true)
+  }
+
+  const handleMeetingScheduled = (meetingDetails: any) => {
+    if (onMeetingScheduled) {
+      onMeetingScheduled(request.id, meetingDetails)
+    }
+    setIsSchedulerOpen(false)
+  }
+
+  const handleMeetingResponse = async () => {
+    try {
+      await collaborationService.respondToMeeting(request.id, { response: meetingResponse })
+      setIsResponseOpen(false)
+      // Refresh the request data or update local state
+    } catch (error) {
+      console.error("Failed to respond to meeting:", error)
+      alert("Failed to respond to meeting. Please try again.")
+    }
+  }
+
   const getStatusBadge = () => {
     switch (request.status) {
       case "pending":
@@ -77,75 +283,243 @@ export const CollaborationRequestCard: React.FC<CollaborationRequestCardProps> =
     }
   }
 
+  const getMeetingStatusBadge = () => {
+    if (!request.meetingScheduled || !request.meetingDetails) return null
+    
+    switch (request.meetingDetails.status) {
+      case "pending":
+        return <Badge variant="warning">Meeting Pending</Badge>
+      case "confirmed":
+        return <Badge variant="success">Meeting Confirmed</Badge>
+      case "cancelled":
+        return <Badge variant="error">Meeting Cancelled</Badge>
+      case "completed":
+        return <Badge variant="secondary">Meeting Completed</Badge>
+      default:
+        return null
+    }
+  }
+
   return (
-    <Card className="transition-all duration-300">
-      <CardBody className="flex flex-col">
-        <div className="flex justify-between items-start">
-          <div className="flex items-start">
-            <Avatar
-              src={investor.avatarUrl}
-              alt={investor.name}
-              size="md"
-              status={investor.isOnline ? "online" : "offline"}
-              className="mr-3"
-            />
+    <>
+      <Card className="transition-all duration-300">
+        <CardBody className="flex flex-col">
+          <div className="flex justify-between items-start">
+            <div className="flex items-start">
+              <Avatar
+                src={investor.avatarUrl}
+                alt={investor.name}
+                size="md"
+                status={investor.isOnline ? "online" : "offline"}
+                className="mr-3"
+              />
 
-            <div>
-              <h3 className="text-md font-semibold text-gray-900">{investor.name}</h3>
-              <p className="text-sm text-gray-500">
-                {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+              <div>
+                <h3 className="text-md font-semibold text-gray-900">{investor.name}</h3>
+                <p className="text-sm text-gray-500">
+                  {formatDistanceToNow(new Date(request.createdAt), { addSuffix: true })}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              {getStatusBadge()}
+              {getMeetingStatusBadge()}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <p className="text-sm text-gray-600">{request.message}</p>
+            
+            {request.requestType === "investment" && request.proposedAmount && (
+              <p className="text-sm text-gray-800 mt-2">
+                <strong>Proposed Amount:</strong> {request.proposedAmount}
               </p>
+            )}
+            
+            {request.proposedTerms && (
+              <p className="text-sm text-gray-800 mt-1">
+                <strong>Terms:</strong> {request.proposedTerms}
+              </p>
+            )}
+          </div>
+
+          {/* Meeting details */}
+          {request.meetingScheduled && request.meetingDetails && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-md">
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Scheduled Meeting</h4>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center">
+                  <Calendar size={14} className="mr-2 text-gray-500" />
+                  <span>{format(new Date(request.meetingDetails.scheduledFor), "MMM d, yyyy")}</span>
+                </div>
+                
+                <div className="flex items-center">
+                  <Clock size={14} className="mr-2 text-gray-500" />
+                  <span>{format(new Date(request.meetingDetails.scheduledFor), "h:mm a")}</span>
+                  <span className="mx-1">-</span>
+                  <span>
+                    {format(
+                      new Date(
+                        new Date(request.meetingDetails.scheduledFor).getTime() + 
+                        request.meetingDetails.duration * 60000
+                      ), 
+                      "h:mm a"
+                    )}
+                  </span>
+                </div>
+                
+                {request.meetingDetails.location && (
+                  <div className="flex items-center">
+                    <MapPin size={14} className="mr-2 text-gray-500" />
+                    <span>{request.meetingDetails.location}</span>
+                  </div>
+                )}
+                
+                {request.meetingDetails.meetingLink && (
+                  <div className="flex items-center">
+                    <Video size={14} className="mr-2 text-gray-500" />
+                    <a 
+                      href={request.meetingDetails.meetingLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary-600 hover:text-primary-500"
+                    >
+                      Join Meeting
+                    </a>
+                  </div>
+                )}
+                
+                {request.meetingDetails.agenda && (
+                  <div className="col-span-full">
+                    <p className="text-xs text-gray-600 mt-1">
+                      <strong>Agenda:</strong> {request.meetingDetails.agenda}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
+        </CardBody>
 
-          {getStatusBadge()}
-        </div>
+        <CardFooter className="border-t border-gray-100 bg-gray-50">
+          {request.status === "pending" ? (
+            <div className="flex justify-between w-full">
+              <div className="space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<X size={16} />}
+                  onClick={handleReject}
+                  disabled={isRejectLoading || isAcceptLoading}
+                >
+                  {isRejectLoading ? "Declining..." : "Decline"}
+                </Button>
+                <Button
+                  variant="success"
+                  size="sm"
+                  leftIcon={<Check size={16} />}
+                  onClick={handleAccept}
+                  disabled={isAcceptLoading || isRejectLoading}
+                >
+                  {isAcceptLoading ? "Accepting..." : "Accept"}
+                </Button>
+              </div>
 
-        <div className="mt-4">
-          <p className="text-sm text-gray-600">{request.message}</p>
-        </div>
-      </CardBody>
-
-      <CardFooter className="border-t border-gray-100 bg-gray-50">
-        {request.status === "pending" ? (
-          <div className="flex justify-between w-full">
-            <div className="space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<X size={16} />}
-                onClick={handleReject}
-                disabled={isRejectLoading || isAcceptLoading}
-              >
-                {isRejectLoading ? "Declining..." : "Decline"}
-              </Button>
-              <Button
-                variant="success"
-                size="sm"
-                leftIcon={<Check size={16} />}
-                onClick={handleAccept}
-                disabled={isAcceptLoading || isRejectLoading}
-              >
-                {isAcceptLoading ? "Accepting..." : "Accept"}
+              <Button variant="primary" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
+                Message
               </Button>
             </div>
+          ) : request.status === "accepted" ? (
+            <div className="flex justify-between w-full">
+              {!request.meetingScheduled ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleScheduleMeeting}>
+                    Schedule Meeting
+                  </Button>
+                  <div className="space-x-2">
+                    <Button variant="outline" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
+                      Message
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={handleViewProfile}>
+                      View Profile
+                    </Button>
+                  </div>
+                </>
+              ) : request.meetingDetails?.status === "pending" ? (
+                <div className="flex justify-between w-full">
+                  <div className="space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleRespondToMeeting("accepted")}
+                    >
+                      Accept Meeting
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleRespondToMeeting("tentative")}
+                    >
+                      Tentative
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleRespondToMeeting("rejected")}
+                    >
+                      Decline Meeting
+                    </Button>
+                  </div>
+                  <Button variant="primary" size="sm" onClick={handleViewProfile}>
+                    View Profile
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex justify-between w-full">
+                  <Button variant="outline" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
+                    Message
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={handleViewProfile}>
+                    View Profile
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex justify-between w-full">
+              <Button variant="outline" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
+                Message
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleViewProfile}>
+                View Profile
+              </Button>
+            </div>
+          )}
+        </CardFooter>
+      </Card>
 
-            <Button variant="primary" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
-              Message
-            </Button>
-          </div>
-        ) : (
-          <div className="flex justify-between w-full">
-            <Button variant="outline" size="sm" leftIcon={<MessageCircle size={16} />} onClick={handleMessage}>
-              Message
-            </Button>
+      {/* Meeting Scheduler Modal */}
+      {isSchedulerOpen && (
+        <MeetingSchedulerModal
+          isOpen={isSchedulerOpen}
+          onClose={() => setIsSchedulerOpen(false)}
+          request={request}
+          onMeetingScheduled={handleMeetingScheduled}
+        />
+      )}
 
-            <Button variant="primary" size="sm" onClick={handleViewProfile}>
-              View Profile
-            </Button>
-          </div>
-        )}
-      </CardFooter>
-    </Card>
+      {/* Meeting Response Modal */}
+      {isResponseOpen && (
+        <MeetingResponseModal
+          isOpen={isResponseOpen}
+          onClose={() => setIsResponseOpen(false)}
+          response={meetingResponse}
+          onConfirm={handleMeetingResponse}
+          meetingDetails={request.meetingDetails}
+        />
+      )}
+    </>
   )
 }

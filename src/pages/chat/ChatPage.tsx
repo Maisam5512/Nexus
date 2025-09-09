@@ -369,6 +369,3 @@ export const ChatPage: React.FC = () => {
     </div>
   )
 }
-
-
-
