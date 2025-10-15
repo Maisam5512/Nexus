@@ -32,23 +32,7 @@ export interface MeetingResponse {
 }
 
 class CollaborationService {
-  // Create collaboration request - FIXED: Added proper error handling
-  // async createRequest(data: CreateCollaborationRequestData): Promise<{ success: boolean; data?: any; error?: string }> {
-  //   try {
-  //     const response = await apiService.post(API_ENDPOINTS.COLLABORATIONS.REQUEST, data)
-  //     return { success: true, data: response.data }
-  //   } catch (error: any) {
-  //     console.error("Failed to create collaboration request:", error)
-  //     return { 
-  //       success: false, 
-  //       error: error.response?.data?.message || "Failed to create collaboration request" 
-  //     }
-  //   }
-  // }
-
-
-
-
+  
   // In collaborationService.ts, update the createRequest method
 async createRequest(data: CreateCollaborationRequestData): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
@@ -71,91 +55,6 @@ async createRequest(data: CreateCollaborationRequestData): Promise<{ success: bo
     }
   }
 }
-
-  // Get collaboration requests
-  // async getCollaborationRequests(filters: CollaborationFilters = {}) {
-  //   try {
-  //     const response = await apiService.get(API_ENDPOINTS.COLLABORATIONS.REQUESTS, {
-  //       params: filters,
-  //     })
-      
-  //     // Handle different response formats
-  //     if (response.data && Array.isArray(response.data)) {
-  //       return { success: true, data: response.data }
-  //     } else if (response.data && response.data.requests) {
-  //       return { success: true, data: response.data.requests }
-  //     } else if (response.data && response.data.data) {
-  //       return { success: true, data: response.data.data }
-  //     } else {
-  //       return { success: false, data: [], error: "Invalid response format" }
-  //     }
-  //   } catch (error: any) {
-  //     console.error("Failed to get collaboration requests:", error)
-  //     return { 
-  //       success: false, 
-  //       data: [], 
-  //       error: error.response?.data?.message || "Failed to fetch collaboration requests" 
-  //     }
-  //   }
-  // }
-
-
-
-
-
-//   // Get collaboration requests with proper typing
-// async getCollaborationRequests(filters: CollaborationFilters = {}): Promise<{ 
-//   success: boolean; 
-//   data?: any; 
-//   error?: string;
-//   requests?: any[];
-//   pagination?: any;
-// }> {
-//   try {
-//     const response = await apiService.get(API_ENDPOINTS.COLLABORATIONS.REQUESTS, {
-//       params: filters,
-//     })
-    
-//     // Handle different response formats
-//     if (response.data && Array.isArray(response.data)) {
-//       return { 
-//         success: true, 
-//         data: response.data,
-//         requests: response.data 
-//       }
-//     } else if (response.data && response.data.requests) {
-//       return { 
-//         success: true, 
-//         data: response.data.requests,
-//         requests: response.data.requests,
-//         pagination: response.data.pagination
-//       }
-//     } else if (response.data && response.data.data) {
-//       return { 
-//         success: true, 
-//         data: response.data.data,
-//         requests: response.data.data 
-//       }
-//     } else {
-//       return { 
-//         success: false, 
-//         data: [], 
-//         requests: [],
-//         error: "Invalid response format" 
-//       }
-//     }
-//   } catch (error: any) {
-//     console.error("Failed to get collaboration requests:", error)
-//     return { 
-//       success: false, 
-//       data: [], 
-//       requests: [],
-//       error: error.response?.data?.message || "Failed to fetch collaboration requests" 
-//     }
-//   }
-// }
-
-
 
 
 
