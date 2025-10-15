@@ -36,6 +36,25 @@ const upload = multer({
   },
 })
 
+// Helper to normalize investmentStage input to match model enums
+const normalizeInvestmentStages = (stages) => {
+  if (!Array.isArray(stages)) return []
+  const allowed = new Set(["pre-seed", "seed", "series-a", "series-b", "series-c", "series-d", "ipo"])
+  // normalize: trim -> lower -> replace spaces/underscores with hyphens
+  const normalized = stages
+    .map((s) => (typeof s === "string" ? s : String(s)))
+    .map((s) =>
+      s
+        .trim()
+        .toLowerCase()
+        .replace(/[_\s]+/g, "-"),
+    )
+    .filter((s) => !!s && allowed.has(s))
+
+  // dedupe
+  return Array.from(new Set(normalized))
+}
+
 // @route   POST /api/profiles/entrepreneur
 // @desc    Create entrepreneur profile
 // @access  Private (Entrepreneurs only)
@@ -79,6 +98,18 @@ router.post("/entrepreneur", requireRole(["entrepreneur"]), validateEntrepreneur
 // @access  Private (Investors only)
 router.post("/investor", requireRole(["investor"]), validateInvestorProfile, async (req, res) => {
   try {
+    // Normalize incoming investmentStage values to match enum
+    if (req.body.investmentStage) {
+      req.body.investmentStage = normalizeInvestmentStages(req.body.investmentStage)
+      if (!req.body.investmentStage.length) {
+        return res.status(400).json({
+          message:
+            "Invalid investment stage values. Allowed: pre-seed, seed, series-a, series-b, series-c, series-d, ipo",
+          code: "INVALID_INVESTMENT_STAGE",
+        })
+      }
+    }
+
     // Check if profile already exists
     const existingProfile = await InvestorProfile.findOne({ userId: req.user.id })
     if (existingProfile) {
@@ -119,7 +150,7 @@ router.get("/entrepreneur/:userId", validateObjectId("userId"), async (req, res)
   try {
     const profile = await EntrepreneurProfile.findOne({ userId: req.params.userId }).populate(
       "userId",
-      "name email avatarUrl location isOnline lastSeen",
+      "name email avatarUrl bio location isOnline lastSeen",
     )
 
     if (!profile) {
@@ -150,7 +181,7 @@ router.get("/investor/:userId", validateObjectId("userId"), async (req, res) => 
   try {
     const profile = await InvestorProfile.findOne({ userId: req.params.userId }).populate(
       "userId",
-      "name email avatarUrl location isOnline lastSeen",
+      "name email avatarUrl bio location isOnline lastSeen",
     )
 
     if (!profile) {
@@ -184,17 +215,15 @@ router.put(
   requireRole(["entrepreneur"]),
   async (req, res) => {
     try {
-      const profile = await EntrepreneurProfile.findOneAndUpdate({ userId: req.params.userId }, req.body, {
-        new: true,
-        runValidators: true,
-      }).populate("userId", "name email avatarUrl")
-
-      if (!profile) {
-        return res.status(404).json({
-          message: "Entrepreneur profile not found",
-          code: "PROFILE_NOT_FOUND",
-        })
-      }
+      const profile = await EntrepreneurProfile.findOneAndUpdate(
+        { userId: req.params.userId },
+        { $set: req.body, $setOnInsert: { userId: req.params.userId } },
+        {
+          new: true,
+          runValidators: true,
+          upsert: true,
+        },
+      ).populate("userId", "name email avatarUrl")
 
       res.json({
         message: "Entrepreneur profile updated successfully",
@@ -220,17 +249,27 @@ router.put(
   requireRole(["investor"]),
   async (req, res) => {
     try {
-      const profile = await InvestorProfile.findOneAndUpdate({ userId: req.params.userId }, req.body, {
-        new: true,
-        runValidators: true,
-      }).populate("userId", "name email avatarUrl")
-
-      if (!profile) {
-        return res.status(404).json({
-          message: "Investor profile not found",
-          code: "PROFILE_NOT_FOUND",
-        })
+      // Normalize incoming investmentStage values to match enum
+      if (req.body.investmentStage) {
+        req.body.investmentStage = normalizeInvestmentStages(req.body.investmentStage)
+        if (!req.body.investmentStage.length) {
+          return res.status(400).json({
+            message:
+              "Invalid investment stage values. Allowed: pre-seed, seed, series-a, series-b, series-c, series-d, ipo",
+            code: "INVALID_INVESTMENT_STAGE",
+          })
+        }
       }
+
+      const profile = await InvestorProfile.findOneAndUpdate(
+        { userId: req.params.userId },
+        { $set: req.body, $setOnInsert: { userId: req.params.userId } },
+        {
+          new: true,
+          runValidators: true,
+          upsert: true,
+        },
+      ).populate("userId", "name email avatarUrl")
 
       res.json({
         message: "Investor profile updated successfully",
@@ -428,3 +467,6 @@ router.get("/stats", async (req, res) => {
 })
 
 module.exports = router
+
+
+

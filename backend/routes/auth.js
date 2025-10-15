@@ -5,8 +5,19 @@ const User = require("../models/User")
 const { authenticateToken } = require("../middleware/auth")
 const { validateRegistration, validateLogin, handleValidationErrors } = require("../middleware/validation")
 const { body } = require("express-validator")
+const {
+  authLimiter,
+  otpLimiter,
+  passwordResetLimiter,
+  sanitizeInput,
+  xssProtection,
+} = require("../middleware/security")
+const { sendOTPEmail, sendPasswordResetEmail } = require("../utils/emailService")
 
 const router = express.Router()
+
+router.use(sanitizeInput)
+router.use(xssProtection)
 
 // Helper function to generate JWT tokens
 const generateTokens = (userId) => {
@@ -75,12 +86,12 @@ router.post("/register", validateRegistration, async (req, res) => {
 // @route   POST /api/auth/login
 // @desc    Login user
 // @access  Public
-router.post("/login", validateLogin, async (req, res) => {
+router.post("/login", authLimiter, validateLogin, async (req, res) => {
   try {
     const { email, password, role } = req.body
 
     // Find user by email and include password for comparison
-    const user = await User.findByEmail(email).select("+password")
+    const user = await User.findByEmail(email).select("+password +loginAttempts +lockUntil")
     if (!user) {
       return res.status(401).json({
         message: "Invalid credentials",
@@ -88,8 +99,17 @@ router.post("/login", validateLogin, async (req, res) => {
       })
     }
 
+    if (user.isLocked) {
+      return res.status(423).json({
+        message: "Account is temporarily locked due to too many failed login attempts. Please try again later.",
+        code: "ACCOUNT_LOCKED",
+        lockUntil: user.lockUntil,
+      })
+    }
+
     // Check if role matches
     if (user.role !== role) {
+      await user.incLoginAttempts()
       return res.status(401).json({
         message: "Invalid credentials for this role",
         code: "INVALID_ROLE",
@@ -99,10 +119,43 @@ router.post("/login", validateLogin, async (req, res) => {
     // Check password
     const isPasswordValid = await user.comparePassword(password)
     if (!isPasswordValid) {
+      await user.incLoginAttempts()
       return res.status(401).json({
         message: "Invalid credentials",
         code: "INVALID_CREDENTIALS",
       })
+    }
+
+    if (user.twoFactorEnabled) {
+      // Generate OTP
+      const otp = user.generateOTP()
+      await user.save()
+
+      // Send OTP via email
+      const emailResult = await sendOTPEmail(user.email, user.name, otp)
+
+      if (!emailResult.success) {
+        console.error("Failed to send OTP email:", emailResult.error)
+        return res.status(500).json({
+          message: "Failed to send verification code",
+          code: "OTP_SEND_FAILED",
+        })
+      }
+
+      // Return temporary token for OTP verification
+      const tempToken = jwt.sign({ userId: user._id, step: "otp_verification" }, process.env.JWT_SECRET, {
+        expiresIn: "10m",
+      })
+
+      return res.json({
+        message: "Verification code sent to your email",
+        requiresOTP: true,
+        tempToken,
+      })
+    }
+
+    if (user.loginAttempts > 0) {
+      await user.resetLoginAttempts()
     }
 
     // Update user online status
@@ -133,6 +186,231 @@ router.post("/login", validateLogin, async (req, res) => {
     })
   }
 })
+
+router.post(
+  "/verify-otp",
+  authLimiter,
+  [
+    body("tempToken").notEmpty().withMessage("Temporary token is required"),
+    body("otp").isLength({ min: 6, max: 6 }).withMessage("OTP must be 6 digits"),
+    handleValidationErrors,
+  ],
+  async (req, res) => {
+    try {
+      const { tempToken, otp } = req.body
+
+      // Verify temporary token
+      let decoded
+      try {
+        decoded = jwt.verify(tempToken, process.env.JWT_SECRET)
+        if (decoded.step !== "otp_verification") {
+          throw new Error("Invalid token type")
+        }
+      } catch (error) {
+        return res.status(401).json({
+          message: "Invalid or expired verification session",
+          code: "INVALID_TEMP_TOKEN",
+        })
+      }
+
+      // Get user with OTP data
+      const user = await User.findById(decoded.userId).select("+otpCode +otpExpires +otpAttempts")
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+          code: "USER_NOT_FOUND",
+        })
+      }
+
+      // Verify OTP
+      const otpResult = await user.verifyOTP(otp)
+      if (!otpResult.success) {
+        return res.status(400).json({
+          message: otpResult.message,
+          code: "OTP_VERIFICATION_FAILED",
+        })
+      }
+
+      // Reset login attempts on successful OTP verification
+      if (user.loginAttempts > 0) {
+        await user.resetLoginAttempts()
+      }
+
+      // Update user online status
+      user.isOnline = true
+      user.lastSeen = new Date()
+
+      // Generate tokens
+      const { accessToken, refreshToken } = generateTokens(user._id)
+
+      // Add refresh token to user
+      user.addRefreshToken(refreshToken)
+      await user.save()
+
+      // Remove sensitive data from response
+      const userResponse = user.toJSON()
+
+      res.json({
+        message: "Login successful",
+        user: userResponse,
+        token: accessToken,
+        refreshToken: refreshToken,
+      })
+    } catch (error) {
+      console.error("OTP verification error:", error)
+      res.status(500).json({
+        message: "OTP verification failed",
+        code: "OTP_VERIFICATION_FAILED",
+      })
+    }
+  },
+)
+
+router.post(
+  "/resend-otp",
+  otpLimiter,
+  [body("tempToken").notEmpty().withMessage("Temporary token is required"), handleValidationErrors],
+  async (req, res) => {
+    try {
+      const { tempToken } = req.body
+
+      // Verify temporary token
+      let decoded
+      try {
+        decoded = jwt.verify(tempToken, process.env.JWT_SECRET)
+        if (decoded.step !== "otp_verification") {
+          throw new Error("Invalid token type")
+        }
+      } catch (error) {
+        return res.status(401).json({
+          message: "Invalid or expired verification session",
+          code: "INVALID_TEMP_TOKEN",
+        })
+      }
+
+      // Get user
+      const user = await User.findById(decoded.userId)
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+          code: "USER_NOT_FOUND",
+        })
+      }
+
+      // Generate new OTP
+      const otp = user.generateOTP()
+      await user.save()
+
+      // Send OTP via email
+      const emailResult = await sendOTPEmail(user.email, user.name, otp)
+
+      if (!emailResult.success) {
+        console.error("Failed to send OTP email:", emailResult.error)
+        return res.status(500).json({
+          message: "Failed to send verification code",
+          code: "OTP_SEND_FAILED",
+        })
+      }
+
+      res.json({
+        message: "Verification code sent successfully",
+      })
+    } catch (error) {
+      console.error("Resend OTP error:", error)
+      res.status(500).json({
+        message: "Failed to resend verification code",
+        code: "RESEND_OTP_FAILED",
+      })
+    }
+  },
+)
+
+router.post("/enable-2fa", authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        code: "USER_NOT_FOUND",
+      })
+    }
+
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({
+        message: "Two-factor authentication is already enabled",
+        code: "2FA_ALREADY_ENABLED",
+      })
+    }
+
+    // Enable 2FA
+    user.twoFactorEnabled = true
+    await user.save()
+
+    res.json({
+      message: "Two-factor authentication enabled successfully",
+      twoFactorEnabled: true,
+    })
+  } catch (error) {
+    console.error("Enable 2FA error:", error)
+    res.status(500).json({
+      message: "Failed to enable two-factor authentication",
+      code: "ENABLE_2FA_FAILED",
+    })
+  }
+})
+
+router.post(
+  "/disable-2fa",
+  authenticateToken,
+  [body("password").notEmpty().withMessage("Password is required"), handleValidationErrors],
+  async (req, res) => {
+    try {
+      const { password } = req.body
+
+      // Get user with password
+      const user = await User.findById(req.user._id).select("+password")
+      if (!user) {
+        return res.status(404).json({
+          message: "User not found",
+          code: "USER_NOT_FOUND",
+        })
+      }
+
+      // Verify password
+      const isPasswordValid = await user.comparePassword(password)
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          message: "Invalid password",
+          code: "INVALID_PASSWORD",
+        })
+      }
+
+      if (!user.twoFactorEnabled) {
+        return res.status(400).json({
+          message: "Two-factor authentication is not enabled",
+          code: "2FA_NOT_ENABLED",
+        })
+      }
+
+      // Disable 2FA
+      user.twoFactorEnabled = false
+      user.twoFactorSecret = undefined
+      user.twoFactorBackupCodes = undefined
+      await user.save()
+
+      res.json({
+        message: "Two-factor authentication disabled successfully",
+        twoFactorEnabled: false,
+      })
+    } catch (error) {
+      console.error("Disable 2FA error:", error)
+      res.status(500).json({
+        message: "Failed to disable two-factor authentication",
+        code: "DISABLE_2FA_FAILED",
+      })
+    }
+  },
+)
 
 // @route   POST /api/auth/refresh
 // @desc    Refresh access token
@@ -255,6 +533,7 @@ router.post("/logout", authenticateToken, async (req, res) => {
 // @access  Public
 router.post(
   "/forgot-password",
+  passwordResetLimiter,
   [body("email").isEmail().normalizeEmail().withMessage("Please provide a valid email"), handleValidationErrors],
   async (req, res) => {
     try {
@@ -272,9 +551,12 @@ router.post(
       const resetToken = user.createPasswordResetToken()
       await user.save({ validateBeforeSave: false })
 
-      // In a real application, send email here
-      // For now, we'll just return the token (remove this in production)
-      console.log("Password reset token:", resetToken)
+      const emailResult = await sendPasswordResetEmail(user.email, user.name, resetToken)
+
+      if (!emailResult.success) {
+        console.error("Failed to send password reset email:", emailResult.error)
+        // Don't reveal the error to the user
+      }
 
       res.json({
         message: "If an account with that email exists, we've sent a password reset link",
@@ -409,6 +691,7 @@ router.put(
 
       // Update password
       user.password = newPassword
+      user.lastPasswordChange = new Date()
 
       // Clear all refresh tokens for security
       user.refreshTokens = []
@@ -429,5 +712,6 @@ router.put(
 )
 
 module.exports = router
+
 
 

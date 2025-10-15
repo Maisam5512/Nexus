@@ -2,16 +2,16 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-//import { useNavigate } from "react-router-dom"
+// import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import messageService from "../../services/messageService"
 import { ChatUserList } from "../../components/chat/ChatUserList"
-import type { ChatConversation } from "../../types"
-import { MessageCircle } from 'lucide-react'
+import type { ChatConversation, Message } from "../../types"
+import { MessageCircle } from "lucide-react"
 
 export const MessagesPage: React.FC = () => {
   const { user } = useAuth()
-  //const navigate = useNavigate()
+  // const navigate = useNavigate()
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -25,28 +25,35 @@ export const MessagesPage: React.FC = () => {
     try {
       setIsLoading(true)
       const conversationsData = await messageService.getConversations()
-      
+
       // Transform backend data to frontend format
       const transformedConversations: ChatConversation[] = conversationsData.map((conv: any) => {
         const otherUser = conv.otherUser
-        
+
+        // Ensure lastMessage satisfies the Message type
+        const lastMessage: Message | undefined = conv.lastMessage
+          ? {
+              id: conv.lastMessage._id,
+              senderId: conv.lastMessage.senderId,
+              receiverId: conv.lastMessage.receiverId,
+              content: conv.lastMessage.content,
+              messageType: conv.lastMessage.messageType,
+              isRead: conv.lastMessage.isRead,
+              readAt: conv.lastMessage.readAt,
+              isEdited: conv.lastMessage.isEdited,
+              editedAt: conv.lastMessage.editedAt,
+              replyTo: conv.lastMessage.replyTo,
+              conversationId: conv.lastMessage.conversationId,
+              createdAt: conv.lastMessage.createdAt,
+              // ✅ FIX: ensure timestamp is always present
+              timestamp: conv.lastMessage.timestamp ?? conv.lastMessage.createdAt ?? new Date().toISOString(),
+            }
+          : undefined
+
         return {
           id: conv._id,
           participants: [user!.id, otherUser._id],
-          lastMessage: conv.lastMessage ? {
-            id: conv.lastMessage._id,
-            senderId: conv.lastMessage.senderId,
-            receiverId: conv.lastMessage.receiverId,
-            content: conv.lastMessage.content,
-            messageType: conv.lastMessage.messageType,
-            isRead: conv.lastMessage.isRead,
-            readAt: conv.lastMessage.readAt,
-            isEdited: conv.lastMessage.isEdited,
-            editedAt: conv.lastMessage.editedAt,
-            replyTo: conv.lastMessage.replyTo,
-            conversationId: conv.lastMessage.conversationId,
-            createdAt: conv.lastMessage.createdAt,
-          } : undefined,
+          lastMessage,
           unreadCount: conv.unreadCount,
           otherUser: {
             id: otherUser._id,
@@ -54,11 +61,12 @@ export const MessagesPage: React.FC = () => {
             email: otherUser.email,
             avatarUrl: otherUser.avatarUrl,
             isOnline: otherUser.isOnline,
-            lastSeen: otherUser.lastSeen
-          }
+            lastSeen: otherUser.lastSeen,
+          },
+          updatedAt: new Date(conv.updatedAt),
         }
       })
-      
+
       setConversations(transformedConversations)
     } catch (error) {
       console.error("[v0] Failed to load conversations:", error)
@@ -93,3 +101,4 @@ export const MessagesPage: React.FC = () => {
     </div>
   )
 }
+

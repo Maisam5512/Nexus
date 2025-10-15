@@ -3,7 +3,7 @@ import React from 'react';
 export type BadgeVariant = 'primary' | 'secondary' | 'accent' | 'success' | 'warning' | 'error' | 'gray';
 export type BadgeSize = 'sm' | 'md' | 'lg';
 
-interface BadgeProps {
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode;
   variant?: BadgeVariant;
   size?: BadgeSize;

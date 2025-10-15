@@ -7,9 +7,14 @@ export interface User {
   role: UserRole
   avatarUrl: string
   bio: string
+  location?: string
+  website?: string
+  linkedin?: string
+  twitter?: string
   isOnline?: boolean
   createdAt: string
   lastSeen?: string
+  twoFactorEnabled?: boolean
 }
 
 export interface Entrepreneur extends User {
@@ -18,10 +23,10 @@ export interface Entrepreneur extends User {
   pitchSummary: string
   fundingNeeded: string
   industry: string
-  location: string
   foundedYear: number
   teamSize: number
-   website?: string
+  // For populated fields
+  website?: string
   linkedin?: string
 }
 
@@ -36,16 +41,15 @@ export interface Investor extends User {
   location: string
 }
 
-
-
 export interface MessageUser {
-  id: string;
-  name: string;
-  avatarUrl: string;
-  email?: string;
-  role?: string;
-  bio?: string;
-  createdAt?: Date;
+  id: string
+  name: string
+  avatarUrl: string
+  email?: string
+  role?: UserRole
+  bio?: string
+  createdAt?: Date
+  isOnline?: boolean
 }
 
 export interface Message {
@@ -63,9 +67,9 @@ export interface Message {
   conversationId: string
   createdAt: string
   // For populated fields
-  sender?: MessageUser;
-  receiver?: MessageUser;
-  isEncrypted?: boolean;
+  sender?: MessageUser
+  receiver?: MessageUser
+  isEncrypted?: boolean
 }
 
 export interface ChatConversation {
@@ -74,7 +78,7 @@ export interface ChatConversation {
   lastMessage?: Message
   updatedAt: Date
   unreadCount: number
-  otherUser: MessageUser;
+  otherUser: MessageUser
 }
 
 export interface CollaborationRequest {
@@ -89,7 +93,8 @@ export interface CollaborationRequest {
   proposedTerms?: string
   respondedAt?: string
   responseMessage?: string
-  
+  meetingScheduled?: boolean
+  meetingDetails?: MeetingDetails
 }
 
 export interface MeetingDetails {
@@ -131,8 +136,11 @@ export interface AuthContextType {
   updateProfile: (userId: string, updates: Partial<User>) => Promise<void>
   isAuthenticated: boolean
   isLoading: boolean
+  changePassword?: (currentPassword: string, newPassword: string) => Promise<void>
+  enable2FA?: () => Promise<void>
+  disable2FA?: (password: string) => Promise<void>
+  uploadAvatar?: (file: File) => Promise<void>
 }
-
 
 export interface PaginationInfo {
   currentPage: number
@@ -141,3 +149,25 @@ export interface PaginationInfo {
   hasNext: boolean
   hasPrev: boolean
 }
+
+
+// Deal types used by Deals page & service
+export type DealStatus = "Due Diligence" | "Term Sheet" | "Negotiation" | "Closed" | "Passed"
+
+export interface Deal {
+  _id: string
+  investorId: string
+  startup: {
+    name: string
+    logo?: string
+    industry?: string
+  }
+  amount: string
+  equity: string
+  status: DealStatus
+  stage?: string
+  lastActivity: string | Date
+  createdAt?: string
+  updatedAt?: string
+}
+

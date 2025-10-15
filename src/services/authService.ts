@@ -47,12 +47,18 @@ export const authService = {
   // Get current user profile
   getCurrentUser: async (): Promise<User> => {
     const response = await api.get("/auth/me")
-    return response.data
+    return response.data.user
   },
 
   // Update user profile
   updateProfile: async (userId: string, updates: Partial<User>): Promise<User> => {
     const response = await api.put(`/users/${userId}`, updates)
-    return response.data
+    return response.data.user
   },
+
+changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+  // Example implementation, adjust endpoint and payload as needed
+  await api.post("/auth/change-password", { currentPassword, newPassword })
 }
+}
+

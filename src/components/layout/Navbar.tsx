@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Menu, X, Bell, MessageCircle, User, LogOut, Building2, CircleDollarSign } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext'; // Import the hook
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 
 export const Navbar: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications(); // Use the context
   const navigate = useNavigate();
   
   const toggleMenu = () => {
@@ -18,7 +20,7 @@ export const Navbar: React.FC = () => {
     logout();
     navigate('/login');
   };
-  
+
   // User dashboard route based on role
   const dashboardRoute = user?.role === 'entrepreneur' 
     ? '/dashboard/entrepreneur' 
@@ -41,7 +43,16 @@ export const Navbar: React.FC = () => {
       path: user ? '/messages' : '/login',
     },
     {
-      icon: <Bell size={18} />,
+      icon: (
+        <div className="relative">
+          <Bell size={18} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </div>
+      ),
       text: 'Notifications',
       path: user ? '/notifications' : '/login',
     },
@@ -77,7 +88,7 @@ export const Navbar: React.FC = () => {
                   <Link
                     key={index}
                     to={link.path}
-                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors duration-200 relative"
                   >
                     <span className="mr-2">{link.icon}</span>
                     {link.text}
@@ -154,11 +165,16 @@ export const Navbar: React.FC = () => {
                     <Link
                       key={index}
                       to={link.path}
-                      className="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md"
+                      className="flex items-center px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md relative"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <span className="mr-3">{link.icon}</span>
                       {link.text}
+                      {link.path === '/notifications' && unreadCount > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
                     </Link>
                   ))}
                   

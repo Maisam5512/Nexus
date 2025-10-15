@@ -4,6 +4,7 @@ import type React from "react"
 import { createContext, useState, useContext, useEffect } from "react"
 import type { User, UserRole, AuthContextType } from "../types"
 import { authService } from "../services/authService"
+import userService from "../services/userService"
 import toast from "react-hot-toast"
 
 // Create Auth Context
@@ -20,11 +21,11 @@ const normalizeUserData = (userData: any): User => {
   if (userData && userData._id && !userData.id) {
     return {
       ...userData,
-      id: userData._id.toString()
-    };
+      id: userData._id.toString(),
+    }
   }
-  return userData;
-};
+  return userData
+}
 
 // Auth Provider Component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -81,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const response = await authService.login(email, password, role)
-      
+
       // Normalize user data to handle _id from backend
       const normalizedUser = normalizeUserData(response.user)
 
@@ -111,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const response = await authService.register({ name, email, password, confirmPassword: password, role })
-      
+
       // Normalize user data to handle _id from backend
       const normalizedUser = normalizeUserData(response.user)
 
@@ -193,8 +194,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const getUserId = (): string | null => {
-  return user?.id || null
-}
+    return user?.id || null
+  }
+
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    try {
+      await authService.changePassword(currentPassword, newPassword)
+      toast.success("Password changed successfully")
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || "Password change failed"
+      toast.error(msg)
+      throw new Error(msg)
+    }
+  }
+
+
+  const uploadAvatar = async (file: File): Promise<void> => {
+    if (!user?.id) throw new Error("No user")
+    try {
+      const res = await userService.uploadAvatar(user.id, file)
+      if (res.success && res.data?.avatarUrl) {
+        const updated = { ...user, avatarUrl: res.data.avatarUrl }
+        setUser(updated)
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated))
+        toast.success("Profile photo updated")
+      } else {
+        throw new Error(res.error || "Avatar upload failed")
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || error.message || "Failed to upload avatar"
+      toast.error(msg)
+      throw new Error(msg)
+    }
+  }
 
   const value = {
     user,
@@ -206,7 +238,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfile,
     isAuthenticated: !!user,
     isLoading,
-    getUserId
+    getUserId,
+    changePassword,
+    uploadAvatar,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -220,4 +254,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context
 }
+
 

@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require("express-validator")
+const { validateNoSQLInjection } = require("./security")
 
 // Middleware to handle validation results
 const handleValidationErrors = (req, res, next) => {
@@ -18,7 +19,19 @@ const handleValidationErrors = (req, res, next) => {
 }
 
 // Common validation rules
-const validateEmail = body("email").isEmail().normalizeEmail().withMessage("Please provide a valid email address")
+const validateEmail = body("email")
+  .isEmail()
+  .normalizeEmail()
+  .withMessage("Please provide a valid email address")
+  .custom((value) => {
+    if (typeof value === "object") {
+      throw new Error("Email cannot be an object")
+    }
+    if (value.includes("$") || value.includes("{")) {
+      throw new Error("Email contains invalid characters")
+    }
+    return true
+  })
 
 const validatePassword = body("password")
   .isLength({ min: 8 })
@@ -27,6 +40,12 @@ const validatePassword = body("password")
   .withMessage(
     "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
   )
+  .custom((value) => {
+    if (typeof value === "object") {
+      throw new Error("Password cannot be an object")
+    }
+    return true
+  })
 
 const validateName = body("name")
   .trim()
@@ -96,6 +115,22 @@ const validateInvestorProfile = [
   handleValidationErrors,
 ]
 
+// OTP validation
+const validateOTP = [
+  body("otp")
+    .isLength({ min: 6, max: 6 })
+    .withMessage("OTP must be 6 digits")
+    .isNumeric()
+    .withMessage("OTP must contain only numbers")
+    .custom((value) => {
+      if (typeof value === "object") {
+        throw new Error("OTP cannot be an object")
+      }
+      return true
+    }),
+  handleValidationErrors,
+]
+
 module.exports = {
   handleValidationErrors,
   validateRegistration,
@@ -104,4 +139,10 @@ module.exports = {
   validateEntrepreneurProfile,
   validateInvestorProfile,
   validateObjectId,
+  validateOTP,
+  validateEmail,
+  validatePassword,
+  validateName,
+  validateRole,
 }
+

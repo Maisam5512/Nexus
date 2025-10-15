@@ -39,12 +39,12 @@ export const EntrepreneurDashboard: React.FC = () => {
 
     try {
       setLoadingRequests(true)
-      const response = await collaborationService.getCollaborationRequests()
-      
+      const response = await collaborationService.getCollaborationRequests({ type: "received" })
+
       if (response.success) {
-        // Filter requests for current user (entrepreneur)
-        const userRequests = response.data.filter((req: CollaborationRequest) => req.entrepreneurId === user.id)
-        setCollaborationRequestsData(userRequests)
+        // The backend already filters by entrepreneurId when type is 'received' for entrepreneurs
+        const requests = response.data || response.requests || []
+        setCollaborationRequestsData(requests)
       } else {
         console.error("Failed to load collaboration requests:", response.error)
         setCollaborationRequestsData([])
@@ -61,7 +61,7 @@ export const EntrepreneurDashboard: React.FC = () => {
     try {
       setLoadingInvestors(true)
       const response = await userService.getUsers({ role: "investor", limit: 3 })
-      
+
       if (response.success) {
         setRecommendedInvestors(response.data as unknown as Investor[])
       } else {
@@ -82,18 +82,12 @@ export const EntrepreneurDashboard: React.FC = () => {
       return
     }
 
-    try {
-      const response = await collaborationService.updateCollaborationRequest(requestId, { status })
-      if (response.success) {
-        setCollaborationRequestsData((prevRequests) =>
-          prevRequests.map((req) => (req.id === requestId ? { ...req, status } : req)),
-        )
-      } else {
-        console.error("Failed to update request status:", response.error)
-      }
-    } catch (error) {
-      console.error("Failed to update request status:", error)
-    }
+    // Update local state and optionally keep the list fresh.
+    setCollaborationRequestsData((prevRequests) =>
+      prevRequests.map((req) => (req.id === requestId ? { ...req, status } : req)),
+    )
+    // Optionally re-fetch to stay fully in sync:
+    // await loadCollaborationRequests()
   }
 
   if (authLoading) {
@@ -250,6 +244,8 @@ export const EntrepreneurDashboard: React.FC = () => {
     </div>
   )
 }
+
+
 
 
 

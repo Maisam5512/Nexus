@@ -4,7 +4,7 @@ const { requireRole, requireOwnership } = require("../middleware/auth")
 const { validateObjectId, handleValidationErrors } = require("../middleware/validation")
 const { body, query } = require("express-validator")
 const multer = require("multer")
-const cloudinary = require("../config/cloudinary")
+const { cloudinary } = require("../config/cloudinary")
 
 const router = express.Router()
 
@@ -134,6 +134,7 @@ router.put(
   validateObjectId("id"),
   requireOwnership("id"),
   [
+    body("email").optional().isEmail().normalizeEmail().withMessage("Please provide a valid email"),
     body("name").optional().trim().isLength({ min: 2, max: 50 }).withMessage("Name must be 2-50 characters"),
     body("bio").optional().trim().isLength({ max: 500 }).withMessage("Bio cannot exceed 500 characters"),
     body("location").optional().trim().isLength({ max: 100 }).withMessage("Location cannot exceed 100 characters"),
@@ -165,10 +166,11 @@ router.put(
   ],
   async (req, res) => {
     try {
-      const { name, bio, location, website, linkedin, twitter } = req.body
+      const { name, email, bio, location, website, linkedin, twitter } = req.body
 
       const updateData = {}
       if (name !== undefined) updateData.name = name
+      if (email !== undefined) updateData.email = email
       if (bio !== undefined) updateData.bio = bio
       if (location !== undefined) updateData.location = location
       if (website !== undefined) updateData.website = website
@@ -537,3 +539,5 @@ router.put("/:id/online-status", validateObjectId("id"), requireOwnership("id"),
 })
 
 module.exports = router
+
+

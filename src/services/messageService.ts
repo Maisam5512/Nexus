@@ -15,8 +15,10 @@ export interface MessageFilters {
 
 export interface BackendMessage {
   _id: string
-  senderId: string | { _id: string; name: string; avatarUrl: string }
-  receiverId: string | { _id: string; name: string; avatarUrl: string }
+  senderId: string | { _id: string; name: string; avatarUrl: string;   email?: string
+        role?: string }
+  receiverId: string | { _id: string; name: string; avatarUrl: string;  email?: string
+        role?: string }
   content: string
   messageType: string
   isRead: boolean

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, Save } from "lucide-react"
 import { Button } from "../ui/Button"
 import { Input } from "../ui/Input"
@@ -9,7 +9,8 @@ import { Card, CardBody } from "../ui/Card"
 import { useAuth } from "../../context/AuthContext"
 import type { Entrepreneur, Investor, User } from "../../types"
 //import { userService } from "../../services/userService"
-import  profileService  from "../../services/profileService"
+import profileService from "../../services/profileService"
+import toast from "react-hot-toast"
 
 interface EditProfileModalProps {
   isOpen: boolean
@@ -18,16 +19,11 @@ interface EditProfileModalProps {
   onProfileUpdate: () => void
 }
 
-export const EditProfileModal: React.FC<EditProfileModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  user, 
-  onProfileUpdate 
-}) => {
+export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, user, onProfileUpdate }) => {
   const { updateProfile } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Initialize form data with proper typing
   const [formData, setFormData] = useState({
     name: user.name || "",
@@ -45,20 +41,51 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     }),
     // Investor specific fields
     ...(user.role === "investor" && {
-      investmentInterests: Array.isArray((user as Investor).investmentInterests) 
-        ? (user as Investor).investmentInterests.join(', ') 
-        : '',
-      investmentStage: Array.isArray((user as Investor).investmentStage) 
-        ? (user as Investor).investmentStage.join(', ') 
-        : '',
-      portfolioCompanies: Array.isArray((user as Investor).portfolioCompanies) 
-        ? (user as Investor).portfolioCompanies.map((c: any) => typeof c === 'string' ? c : c.name).join(', ') 
-        : '',
+      investmentInterests: Array.isArray((user as Investor).investmentInterests)
+        ? (user as Investor).investmentInterests.join(", ")
+        : "",
+      investmentStage: Array.isArray((user as Investor).investmentStage)
+        ? (user as Investor).investmentStage.join(", ")
+        : "",
+      portfolioCompanies: Array.isArray((user as Investor).portfolioCompanies)
+        ? (user as Investor).portfolioCompanies.map((c: any) => (typeof c === "string" ? c : c.name)).join(", ")
+        : "",
       totalInvestments: (user as Investor).totalInvestments || 0,
       minimumInvestment: (user as Investor).minimumInvestment || "",
       maximumInvestment: (user as Investor).maximumInvestment || "",
     }),
   })
+
+  useEffect(() => {
+    setFormData({
+      name: user.name || "",
+      email: user.email || "",
+      bio: user.bio || "",
+      location: (user as any).location || "",
+      ...(user.role === "entrepreneur" && {
+        startupName: (user as Entrepreneur).startupName || "",
+        industry: (user as Entrepreneur).industry || "",
+        fundingNeeded: (user as Entrepreneur).fundingNeeded || "",
+        pitchSummary: (user as Entrepreneur).pitchSummary || "",
+        teamSize: (user as Entrepreneur).teamSize || 0,
+        foundedYear: (user as Entrepreneur).foundedYear || new Date().getFullYear(),
+      }),
+      ...(user.role === "investor" && {
+        investmentInterests: Array.isArray((user as Investor).investmentInterests)
+          ? (user as Investor).investmentInterests.join(", ")
+          : "",
+        investmentStage: Array.isArray((user as Investor).investmentStage)
+          ? (user as Investor).investmentStage.join(", ")
+          : "",
+        portfolioCompanies: Array.isArray((user as Investor).portfolioCompanies)
+          ? (user as Investor).portfolioCompanies.map((c: any) => (typeof c === "string" ? c : c.name)).join(", ")
+          : "",
+        totalInvestments: (user as Investor).totalInvestments || 0,
+        minimumInvestment: (user as Investor).minimumInvestment || "",
+        maximumInvestment: (user as Investor).maximumInvestment || "",
+      }),
+    })
+  }, [user])
 
   if (!isOpen) return null
 
@@ -78,10 +105,10 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     try {
       // Split data into user data and profile data
       const { name, email, bio, location, ...profileData } = formData
-      
+
       // Update user data
       await updateProfile(user.id, { name, email, bio, location } as Partial<User>)
-      
+
       // Update profile-specific data
       if (user.role === "entrepreneur") {
         // Convert string values to appropriate types
@@ -94,21 +121,21 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       } else if (user.role === "investor") {
         // Convert comma-separated strings to arrays
         const investorData = {
-          investmentInterests: profileData.investmentInterests 
-            ? profileData.investmentInterests.split(',').map(item => item.trim()) 
+          investmentInterests: profileData.investmentInterests
+            ? profileData.investmentInterests.split(",").map((item) => item.trim())
             : [],
-          investmentStage: profileData.investmentStage 
-            ? profileData.investmentStage.split(',').map(item => item.trim()) 
+          investmentStage: profileData.investmentStage
+            ? profileData.investmentStage.split(",").map((item) => item.trim())
             : [],
           // For portfolioCompanies, we need to handle both string and object formats
-          portfolioCompanies: profileData.portfolioCompanies 
-            ? profileData.portfolioCompanies.split(',').map(name => ({ 
+          portfolioCompanies: profileData.portfolioCompanies
+            ? profileData.portfolioCompanies.split(",").map((name) => ({
                 name: name.trim(),
                 industry: "",
                 investmentAmount: "",
                 currentStatus: "active",
-                isPublic: true
-              })) 
+                isPublic: true,
+              }))
             : [],
           totalInvestments: Number(profileData.totalInvestments),
           minimumInvestment: profileData.minimumInvestment,
@@ -116,12 +143,15 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         }
         await profileService.updateInvestorProfile(user.id, investorData)
       }
-      
+
+      toast.success("Profile updated successfully!")
       onClose()
       onProfileUpdate() // Refresh profile data
     } catch (error: any) {
       console.error("Profile update failed:", error)
-      setError(error.response?.data?.message || "Failed to update profile. Please try again.")
+      const errorMessage = error.response?.data?.message || "Failed to update profile. Please try again."
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -139,11 +169,9 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
         <CardBody className="p-6">
           {error && (
-            <div className="mb-4 p-3 bg-error-50 border border-error-200 rounded-md text-error-700">
-              {error}
-            </div>
+            <div className="mb-4 p-3 bg-error-50 border border-error-200 rounded-md text-error-700">{error}</div>
           )}
-          
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
@@ -214,12 +242,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Team Size</label>
-                    <Input 
-                      name="teamSize" 
-                      type="number" 
-                      value={formData.teamSize || 0} 
-                      onChange={handleInputChange} 
-                    />
+                    <Input name="teamSize" type="number" value={formData.teamSize || 0} onChange={handleInputChange} />
                   </div>
 
                   <div>
@@ -336,6 +359,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     </div>
   )
 }
+
+
 
 
 

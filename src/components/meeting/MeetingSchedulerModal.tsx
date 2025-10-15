@@ -2,13 +2,13 @@
 
 import type React from "react"
 import { useState } from "react"
-import { X, Calendar, Clock, MapPin, Video, FileText } from "lucide-react"
+import { MapPin, Video, FileText } from "lucide-react"
 import { Modal } from "../ui/Modal"
 import { Button } from "../ui/Button"
 import { Input } from "../ui/Input"
 import { Textarea } from "../ui/Textarea"
 import { collaborationService } from "../../services/collaborationService"
-import { format } from "date-fns"
+import toast from "react-hot-toast"
 
 interface MeetingSchedulerModalProps {
   isOpen: boolean
@@ -21,7 +21,7 @@ export const MeetingSchedulerModal: React.FC<MeetingSchedulerModalProps> = ({
   isOpen,
   onClose,
   request,
-  onMeetingScheduled
+  onMeetingScheduled,
 }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -29,13 +29,13 @@ export const MeetingSchedulerModal: React.FC<MeetingSchedulerModalProps> = ({
     duration: 30,
     location: "",
     meetingLink: "",
-    agenda: ""
+    agenda: "",
   })
   const [error, setError] = useState("")
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,27 +48,31 @@ export const MeetingSchedulerModal: React.FC<MeetingSchedulerModalProps> = ({
       const conflictCheck = await collaborationService.checkMeetingConflict(
         formData.scheduledFor,
         formData.duration,
-        request.id
+        request.id,
       )
 
       if (conflictCheck.success && conflictCheck.data.hasConflict) {
         setError("This meeting time conflicts with existing meetings. Please choose a different time.")
+        toast.error("Meeting time conflict detected")
         setIsLoading(false)
         return
       }
 
       // Schedule the meeting
       const response = await collaborationService.scheduleMeeting(request.id, formData)
-      
+
       if (response.success) {
+        toast.success("Meeting scheduled successfully!")
         onMeetingScheduled(response.data.meeting)
         onClose()
       } else {
         setError(response.error || "Failed to schedule meeting")
+        toast.error(response.error || "Failed to schedule meeting")
       }
     } catch (error) {
       console.error("Failed to schedule meeting:", error)
       setError("Failed to schedule meeting. Please try again.")
+      toast.error("Failed to schedule meeting. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -91,7 +95,7 @@ export const MeetingSchedulerModal: React.FC<MeetingSchedulerModalProps> = ({
               required
             />
           </div>
-          
+
           <div>
             <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
               Duration (minutes)
@@ -159,11 +163,7 @@ export const MeetingSchedulerModal: React.FC<MeetingSchedulerModalProps> = ({
           />
         </div>
 
-        {error && (
-          <div className="p-3 bg-error-50 text-error-700 rounded-md">
-            {error}
-          </div>
-        )}
+        {error && <div className="p-3 bg-error-50 text-error-700 rounded-md">{error}</div>}
 
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="outline" onClick={onClose}>
